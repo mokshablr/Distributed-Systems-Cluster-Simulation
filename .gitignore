@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+*.swp
+.DS_Store
+venv/
+.env
+
+# Logs
+logs/
+*.log
+
+# Docker
+docker-compose.override.yml
+*.pid
+*.sock
+
+# IDE / Editor
+.vscode/
+.idea/
+*.iml
+
+# Byte-compiled / Cached files
+*.pyc
+*.pyo
+
+# Flask
+instance/
+
