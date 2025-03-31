@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cluster Manager</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        text-align: center;
+      }
+      #nodes {
+        margin-top: 20px;
+      }
+      button,
+      input {
+        margin: 5px;
+        padding: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Cluster Manager</h1>
+    <button onclick="listNodes()">List Nodes</button>
+
+    <br /><br />
+    <input type="number" id="cpuInput" placeholder="Enter CPU cores" min="1" />
+    <button onclick="addNode()">Add Node</button>
+
+    <div id="nodes"></div>
+
+    <script>
+      function listNodes() {
+        fetch("/nodes")
+          .then((response) => response.json())
+          .then((data) => {
+            let output = "<h3>Nodes:</h3>";
+            for (const [id, info] of Object.entries(data)) {
+              output += `<p><strong>ID:</strong> ${id} | <strong>CPU:</strong> ${info.cpu_cores} | <strong>Status:</strong> ${info.status}</p>`;
+            }
+            document.getElementById("nodes").innerHTML = output;
+          });
+      }
+
+      function addNode() {
+        let cpuCores = document.getElementById("cpuInput").value;
+        if (!cpuCores || cpuCores <= 0) {
+          alert("Please enter a valid number of CPU cores.");
+          return;
+        }
+
+        fetch("/nodes/add", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ cpu_cores: parseInt(cpuCores) }),
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            alert(data.message + " (ID: " + data.node_id + ")");
+            listNodes(); // Refresh the list after adding
+          });
+      }
+    </script>
+  </body>
+</html>
