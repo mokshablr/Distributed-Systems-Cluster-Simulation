@@ -3,25 +3,63 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Cluster Manager</title>
+    <title>Cluster Manager Dashboard</title>
     <style>
+      :root {
+        --bg-color: #e0f7fa;              /* light aqua background */
+        --header-bg: #00838f;             /* deep teal, ocean depths */
+        --header-text: #e0f7fa;           /* light text */
+        --container-bg: #ffffff;
+        --container-shadow: rgba(0, 0, 0, 0.1);
+        --btn-bg: #00838f;
+        --btn-text: #e0f7fa;
+        --node-item-bg: #b2ebf2;          /* lighter aqua */
+        --node-border: #4dd0e1;
+        --badge-bg: #4dd0e1;
+        --badge-text: #006064;
+        --tab-color: #00796b;
+        --tab-active-border: #00796b;
+      }
+      
       body {
         font-family: Arial, sans-serif;
+        background-color: var(--bg-color);
+        margin: 0;
+      }
+      header {
+        background-color: var(--header-bg);
+        color: var(--header-text);
+        padding: 20px;
         text-align: center;
-        max-width: 800px;
-        margin: 0 auto;
+      }
+      .container {
+        max-width: 1000px;
+        margin: 20px auto;
+        background-color: var(--container-bg);
+        border-radius: 8px;
+        box-shadow: 0 2px 4px var(--container-shadow);
         padding: 20px;
       }
-      #nodes {
+      h1, h2 {
+        margin: 0 0 15px;
+      }
+      #nodes, #pods {
         margin-top: 20px;
-        text-align: left;
       }
       button, input {
         margin: 5px;
         padding: 10px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+      }
+      button {
+        background-color: var(--btn-bg);
+        color: var(--btn-text);
       }
       .node-item {
-        background-color: #f5f5f5;
+        background-color: var(--node-item-bg);
+        border: 1px solid var(--node-border);
         border-radius: 5px;
         padding: 10px;
         margin-bottom: 10px;
@@ -33,38 +71,86 @@
         flex-grow: 1;
       }
       .virtual-badge {
-        background-color: #ffcc00;
+        background-color: var(--badge-bg);
         padding: 3px 8px;
         border-radius: 10px;
         font-size: 0.8em;
         margin-left: 10px;
+        color: var(--badge-text);
       }
       .api-reference {
         margin-top: 30px;
-        text-align: left;
-        background-color: #eef;
+        background-color: var(--node-item-bg);
         padding: 15px;
         border-radius: 5px;
+        text-align: left;
       }
       code {
-        background-color: #f0f0f0;
+        background-color: var(--bg-color);
         padding: 2px 5px;
         border-radius: 3px;
         font-family: monospace;
       }
+      
+      .tabs {
+        display: flex;
+        margin-bottom: 20px;
+      }
+      .tab {
+        flex-grow: 1;
+        text-align: center;
+        padding: 10px 0;
+        border-bottom: 2px solid transparent;
+        cursor: pointer;
+        color: var(--tab-color);
+      }
+      .tab.active {
+        border-bottom: 2px solid var(--tab-active-border);
+        font-weight: bold;
+      }
     </style>
   </head>
   <body>
-    <h1>Cluster Manager</h1>
-    <button onclick="listNodes()">List Nodes</button>
+    <header>
+      <h1>Cluster Manager Dashboard</h1>
+    </header>
+    <div class="container">
+      <div class="tabs">
+        <div class="tab active" onclick="showSection('nodesSection')">Nodes</div>
+        <div class="tab" onclick="showSection('podsSection')">Pods</div>
+      </div>
 
-    <br /><br />
-    <input type="number" id="cpuInput" placeholder="Enter CPU cores" min="1" />
-    <button onclick="addNode()">Add Node</button>
+      <section id="nodesSection">
+        <h2>Nodes</h2>
+        <button onclick="listNodes()">Refresh Nodes</button>
+        <br /><br />
+        <input type="number" id="cpuInput" placeholder="Enter CPU cores" min="1" />
+        <button onclick="addNode()">Add Node</button>
+        <div id="nodes"></div>
+      </section>
 
-    <div id="nodes"></div>
+      <section id="podsSection" style="display:none;">
+        <h2>Pods</h2>
+        <p>Under Development</p>
+      </section>
+    </div>
 
     <script>
+      // Tab switching for sections
+      function showSection(sectionId) {
+        document.getElementById("nodesSection").style.display = sectionId === "nodesSection" ? "block" : "none";
+        document.getElementById("podsSection").style.display = sectionId === "podsSection" ? "block" : "none";
+        // Update active tab appearance
+        let tabs = document.querySelectorAll('.tab');
+        tabs.forEach(tab => {
+          if(tab.textContent.toLowerCase() === sectionId.replace("Section", "").toLowerCase()){
+            tab.classList.add("active");
+          } else {
+            tab.classList.remove("active");
+          }
+        });
+      }
+
       // Load nodes when page loads
       window.onload = function() {
         listNodes();
@@ -72,10 +158,9 @@
 
       function listNodes() {
         fetch("/nodes")
-          .then((response) => response.json())
-          .then((data) => {
+          .then(response => response.json())
+          .then(data => {
             let output = "<h3>Nodes:</h3>";
-            
             if (Object.keys(data).length === 0) {
               output += "<p>No nodes available. Add a node to get started.</p>";
             } else {
@@ -91,12 +176,10 @@
                 </div>`;
               }
             }
-            
             document.getElementById("nodes").innerHTML = output;
           })
           .catch(error => {
-            document.getElementById("nodes").innerHTML = 
-              "<p>Error loading nodes. Please ensure the server is running.</p>";
+            document.getElementById("nodes").innerHTML = "<p>Error loading nodes. Please ensure the server is running.</p>";
             console.error("Error fetching nodes:", error);
           });
       }
@@ -107,21 +190,20 @@
           alert("Please enter a valid number of CPU cores.");
           return;
         }
-
         fetch("/nodes/add", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ cpu_cores: parseInt(cpuCores) }),
+          body: JSON.stringify({ cpu_cores: parseInt(cpuCores) })
         })
-          .then((response) => response.json())
-          .then((data) => {
+          .then(response => response.json())
+          .then(data => {
             if (data.error) {
               alert("Error: " + data.error);
             } else {
               alert(data.message + " (ID: " + data.node_id + ")");
               document.getElementById("cpuInput").value = "";
             }
-            listNodes(); // Refresh the list after adding
+            listNodes();
           })
           .catch(error => {
             alert("Error adding node. See console for details.");
@@ -131,17 +213,15 @@
 
       function removeNode(id) {
         if (confirm("Are you sure you want to delete node " + id + "?")) {
-          fetch(`/nodes/${id}/remove`, {
-            method: "DELETE"
-          })
-            .then((response) => response.json())
-            .then((data) => {
+          fetch(`/nodes/${id}/remove`, { method: "DELETE" })
+            .then(response => response.json())
+            .then(data => {
               if (data.error) {
                 alert("Error: " + data.error);
               } else {
                 alert(data.message);
               }
-              listNodes(); // Refresh the list
+              listNodes();
             })
             .catch(error => {
               alert("Error removing node. See console for details.");
