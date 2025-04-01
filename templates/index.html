@@ -1,3 +1,4 @@
+Simulation/templates/index.html -->
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -8,14 +9,49 @@
       body {
         font-family: Arial, sans-serif;
         text-align: center;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
       }
       #nodes {
         margin-top: 20px;
+        text-align: left;
       }
-      button,
-      input {
+      button, input {
         margin: 5px;
         padding: 10px;
+      }
+      .node-item {
+        background-color: #f5f5f5;
+        border-radius: 5px;
+        padding: 10px;
+        margin-bottom: 10px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .node-info {
+        flex-grow: 1;
+      }
+      .virtual-badge {
+        background-color: #ffcc00;
+        padding: 3px 8px;
+        border-radius: 10px;
+        font-size: 0.8em;
+        margin-left: 10px;
+      }
+      .api-reference {
+        margin-top: 30px;
+        text-align: left;
+        background-color: #eef;
+        padding: 15px;
+        border-radius: 5px;
+      }
+      code {
+        background-color: #f0f0f0;
+        padding: 2px 5px;
+        border-radius: 3px;
+        font-family: monospace;
       }
     </style>
   </head>
@@ -29,16 +65,47 @@
 
     <div id="nodes"></div>
 
+    <div class="api-reference">
+      <h3>API Reference:</h3>
+      <p><strong>List nodes:</strong> <code>curl http://127.0.0.1:5000/nodes</code></p>
+      <p><strong>Add a node:</strong> <code>curl -X POST http://127.0.0.1:5000/nodes/add -H "Content-Type: application/json" -d '{"cpu_cores": 2}'</code></p>
+      <p><strong>Delete a node:</strong> <code>curl -X DELETE http://127.0.0.1:5000/nodes/NODE_ID/remove</code></p>
+    </div>
+
     <script>
+      // Load nodes when page loads
+      window.onload = function() {
+        listNodes();
+      };
+
       function listNodes() {
         fetch("/nodes")
           .then((response) => response.json())
           .then((data) => {
             let output = "<h3>Nodes:</h3>";
-            for (const [id, info] of Object.entries(data)) {
-              output += `<p><strong>ID:</strong> ${id} | <strong>CPU:</strong> ${info.cpu_cores} | <strong>Status:</strong> ${info.status}</p>`;
+            
+            if (Object.keys(data).length === 0) {
+              output += "<p>No nodes available. Add a node to get started.</p>";
+            } else {
+              for (const [id, info] of Object.entries(data)) {
+                output += `<div class="node-item">
+                  <div class="node-info">
+                    <strong>ID:</strong> ${id} | 
+                    <strong>CPU:</strong> ${info.cpu_cores} | 
+                    <strong>Status:</strong> ${info.status}
+                    ${info.virtual ? '<span class="virtual-badge">Virtual</span>' : ''}
+                  </div>
+                  <button onclick="removeNode('${id}')">Delete</button>
+                </div>`;
+              }
             }
+            
             document.getElementById("nodes").innerHTML = output;
+          })
+          .catch(error => {
+            document.getElementById("nodes").innerHTML = 
+              "<p>Error loading nodes. Please ensure the server is running.</p>";
+            console.error("Error fetching nodes:", error);
           });
       }
 
@@ -56,9 +123,39 @@
         })
           .then((response) => response.json())
           .then((data) => {
-            alert(data.message + " (ID: " + data.node_id + ")");
+            if (data.error) {
+              alert("Error: " + data.error);
+            } else {
+              alert(data.message + " (ID: " + data.node_id + ")");
+              document.getElementById("cpuInput").value = "";
+            }
             listNodes(); // Refresh the list after adding
+          })
+          .catch(error => {
+            alert("Error adding node. See console for details.");
+            console.error("Error:", error);
           });
+      }
+
+      function removeNode(id) {
+        if (confirm("Are you sure you want to delete node " + id + "?")) {
+          fetch(`/nodes/${id}/remove`, {
+            method: "DELETE"
+          })
+            .then((response) => response.json())
+            .then((data) => {
+              if (data.error) {
+                alert("Error: " + data.error);
+              } else {
+                alert(data.message);
+              }
+              listNodes(); // Refresh the list
+            })
+            .catch(error => {
+              alert("Error removing node. See console for details.");
+              console.error("Error:", error);
+            });
+        }
       }
     </script>
   </body>
