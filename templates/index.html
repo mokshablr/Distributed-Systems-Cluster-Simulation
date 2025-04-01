@@ -1,4 +1,3 @@
-Simulation/templates/index.html -->
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -64,13 +63,6 @@ Simulation/templates/index.html -->
     <button onclick="addNode()">Add Node</button>
 
     <div id="nodes"></div>
-
-    <div class="api-reference">
-      <h3>API Reference:</h3>
-      <p><strong>List nodes:</strong> <code>curl http://127.0.0.1:5000/nodes</code></p>
-      <p><strong>Add a node:</strong> <code>curl -X POST http://127.0.0.1:5000/nodes/add -H "Content-Type: application/json" -d '{"cpu_cores": 2}'</code></p>
-      <p><strong>Delete a node:</strong> <code>curl -X DELETE http://127.0.0.1:5000/nodes/NODE_ID/remove</code></p>
-    </div>
 
     <script>
       // Load nodes when page loads
