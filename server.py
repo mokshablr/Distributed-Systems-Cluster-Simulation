@@ -1,7 +1,9 @@
 from flask import Flask, jsonify, request, render_template
 import docker
+import os
 
 app = Flask(__name__)
+os.environ["DOCKER_HOST"] = "unix:///Users/lapac/.docker/run/docker.sock"  # Ensure Docker is accessible via TCP
 client = docker.from_env()
 
 nodes = {}
