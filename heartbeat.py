@@ -39,7 +39,7 @@ def send_heartbeat(server_url):
         logger.debug(f"Failed to send heartbeat to {server_url}: {e}")
         return False
 
-if _name_ == "_main_":
+if __name__ == "__main__":
     working_server = None
     
     while True:
