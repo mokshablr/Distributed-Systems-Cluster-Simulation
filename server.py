@@ -146,5 +146,15 @@ def schedule_pod():
             return jsonify({"message": "Pod scheduled", "pod_id": pod_id, "node_id": nid}), 201
     return jsonify({"error": "No nodes available for this pod"}), 503
 
+@app.route('/pods/<pod_id>/remove', methods=['DELETE'])
+def remove_pod(pod_id):
+    if pod_id not in pods:
+        return jsonify({"error": f"Pod {pod_id} not found"}), 404
+    node_id = pods[pod_id]['node_id']
+    if node_id in nodes and pod_id in nodes[node_id]['pods']:
+        nodes[node_id]['pods'].remove(pod_id)
+    del pods[pod_id]
+    return jsonify({"message": f"Pod {pod_id} removed"}), 200
+
 if __name__ == '__main__':
     app.run(debug=True, port=5000)

@@ -165,7 +165,7 @@
           .then(res => res.json())
           .then(data => {
             let out = "<h3>Nodes:</h3>";
-            if (Object.keys(data).length === 0) {
+            if (!Object.keys(data).length) {
               out += "<p>No nodes available.</p>";
             } else {
               for (const [nid, info] of Object.entries(data)) {
@@ -176,6 +176,7 @@
                     <strong>Status:</strong> ${info.status}
                     ${info.virtual ? '<span class="virtual-badge">Virtual</span>' : ''}
                   </div>
+                  <button onclick="removeNode('${nid}')">Remove</button>
                 </div>`;
               }
             }
@@ -185,6 +186,13 @@
             document.getElementById("nodes").innerHTML = "<p>Error loading nodes.</p>";
             console.error("Error fetching nodes:", err);
           });
+      }
+
+      function removeNode(id) {
+        fetch(`/nodes/${id}/remove`, { method: 'DELETE' })
+          .then(res => res.json())
+          .then(_ => listNodes())
+          .catch(err => console.error(err));
       }
 
       function addNode() {
@@ -220,7 +228,7 @@
           .then(res => res.json())
           .then(data => {
             let out = "<h3>Pods:</h3>";
-            if (Object.keys(data).length === 0) {
+            if (!Object.keys(data).length) {
               out += "<p>No pods scheduled.</p>";
             } else {
               for (const [pid, info] of Object.entries(data)) {
@@ -231,6 +239,7 @@
                     <strong>Node:</strong> ${info.node_id} |
                     <strong>Status:</strong> ${info.status}
                   </div>
+                  <button onclick="removePod('${pid}')">Remove</button>
                 </div>`;
               }
             }
@@ -240,6 +249,13 @@
             document.getElementById("pods").innerHTML = "<p>Error loading pods.</p>";
             console.error("Error fetching pods:", err);
           });
+      }
+
+      function removePod(id) {
+        fetch(`/pods/${id}/remove`, { method: 'DELETE' })
+          .then(res => res.json())
+          .then(_ => listPods())
+          .catch(err => console.error(err));
       }
 
       function schedulePod() {
