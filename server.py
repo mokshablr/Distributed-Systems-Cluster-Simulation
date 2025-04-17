@@ -1,5 +1,6 @@
 from flask import Flask, jsonify, request, render_template
 import docker
+import os
 import threading
 import time
 import socket
@@ -12,6 +13,7 @@ logging.basicConfig(level=logging.INFO,
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
+os.environ["DOCKER_HOST"] = "unix:///Users/lapac/.docker/run/docker.sock"  # Ensure Docker is accessible via TCP
 client = docker.from_env()
 
 # Data structures
