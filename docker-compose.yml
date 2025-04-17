@@ -1,0 +1,32 @@
+version: "3"
+
+services:
+  api-server:
+    build:
+      context: .
+      dockerfile: Dockerfile.server
+    ports:
+      - "5000:5000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - cluster-network
+    hostname: api-server
+    container_name: api-server
+
+  # Build the node image
+  node-builder:
+    build:
+      context: .
+      dockerfile: Dockerfile.node
+    image: node-heartbeat:latest
+    command: echo "Node image built"
+    networks:
+      - cluster-network
+    depends_on:
+      - api-server
+
+networks:
+  cluster-network:
+    name: cluster-network
+    driver: bridge

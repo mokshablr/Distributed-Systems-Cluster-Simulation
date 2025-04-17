@@ -1,0 +1,14 @@
+FROM ubuntu:latest
+
+# Install necessary packages
+RUN apt-get update && apt-get install -y \
+    python3 \
+    python3-pip \
+    python3-requests
+
+# Copy heartbeat script
+COPY heartbeat.py /heartbeat.py
+RUN chmod +x /heartbeat.py
+
+# Run the heartbeat script
+CMD ["python3", "/heartbeat.py"]
