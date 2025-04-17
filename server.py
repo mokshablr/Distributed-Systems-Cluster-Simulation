@@ -3,6 +3,8 @@ import docker
 import sys
 import logging
 import uuid
+import time
+import threading
 
 app = Flask(__name__)
 
@@ -25,6 +27,19 @@ except docker.errors.DockerException as e:
     print("The application will run in limited mode without Docker functionality.")
 
 nodes = {}
+pods = {}  # New global pods store
+
+# Start health-monitor thread
+def health_monitor():
+    while True:
+        now = time.time()
+        for nid, info in nodes.items():
+            last = info.get('last_heartbeat', 0)
+            if now - last > 10:  # 10s timeout
+                info['status'] = 'unhealthy'
+        time.sleep(5)
+
+threading.Thread(target=health_monitor, daemon=True).start()
 
 @app.route('/')
 def home():
@@ -45,14 +60,17 @@ def add_node():
     data = request.json
     cpu_cores = data.get('cpu_cores', 1)
 
+    node_id = str(uuid.uuid4())[:12]
+    nodes[node_id] = {
+        "cpu_cores": cpu_cores,
+        "status": docker_available and "healthy" or "simulated",
+        "virtual": not docker_available,
+        "pods": [],  # Track pod IDs
+        "last_heartbeat": time.time()  # Init heartbeat
+    }
+
     if not docker_available:
         # Create a virtual node when Docker isn't available
-        node_id = str(uuid.uuid4())[:12]  # Generate ID similar to Docker's short_id
-        nodes[node_id] = {
-            "cpu_cores": cpu_cores,
-            "status": "simulated",
-            "virtual": True
-        }
         logger.info(f"Created virtual node {node_id} (Docker unavailable)")
         return jsonify({"message": "Virtual node added", "node_id": node_id, "cpu_cores": cpu_cores})
     
@@ -63,13 +81,10 @@ def add_node():
             detach=True
         )
 
-        node_id = container.short_id
-        nodes[node_id] = {
-            "cpu_cores": cpu_cores,
-            "status": "healthy",
+        nodes[node_id].update({
             "container_id": container.id,
             "virtual": False
-        }
+        })
 
         return jsonify({"message": "Node added", "node_id": node_id, "cpu_cores": cpu_cores})
     except Exception as e:
@@ -96,6 +111,40 @@ def remove_node(node_id):
     del nodes[node_id]
     
     return jsonify({"message": f"Node {node_id} removed successfully"})
+
+@app.route('/heartbeat', methods=['POST'])
+def heartbeat():
+    data = request.json
+    nid = data.get('node_id')
+    if nid in nodes:
+        nodes[nid]['last_heartbeat'] = time.time()
+        nodes[nid]['status'] = 'healthy'
+        return jsonify({"message": "Heartbeat received"}), 200
+    return jsonify({"error": "Node not found"}), 404
+
+@app.route('/pods', methods=['GET'])
+def list_pods():
+    return jsonify(pods)
+
+@app.route('/pods', methods=['POST'])
+def schedule_pod():
+    data = request.json
+    cpu_req = data.get('cpu', 1)
+    # Find any healthy node with enough free CPU
+    for nid, info in nodes.items():
+        if info['status'] != 'healthy':
+            continue
+        used = sum(pods[pid]['cpu'] for pid in info['pods'])
+        if info['cpu_cores'] - used >= cpu_req:
+            pod_id = str(uuid.uuid4())[:12]
+            pods[pod_id] = {
+                "cpu": cpu_req,
+                "node_id": nid,
+                "status": "running"
+            }
+            info['pods'].append(pod_id)
+            return jsonify({"message": "Pod scheduled", "pod_id": pod_id, "node_id": nid}), 201
+    return jsonify({"error": "No nodes available for this pod"}), 503
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
