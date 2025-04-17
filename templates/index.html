@@ -131,7 +131,11 @@
 
       <section id="podsSection" style="display:none;">
         <h2>Pods</h2>
-        <p>Under Development</p>
+        <button onclick="listPods()">Refresh Pods</button>
+        <br/><br/>
+        <input type="number" id="podCpuInput" placeholder="Enter Pod CPU" min="1" />
+        <button onclick="schedulePod()">Schedule Pod</button>
+        <div id="pods"></div>
       </section>
     </div>
 
@@ -140,94 +144,145 @@
       function showSection(sectionId) {
         document.getElementById("nodesSection").style.display = sectionId === "nodesSection" ? "block" : "none";
         document.getElementById("podsSection").style.display = sectionId === "podsSection" ? "block" : "none";
-        // Update active tab appearance
         let tabs = document.querySelectorAll('.tab');
         tabs.forEach(tab => {
-          if(tab.textContent.toLowerCase() === sectionId.replace("Section", "").toLowerCase()){
+          if (tab.textContent.toLowerCase() === sectionId.replace("Section", "").toLowerCase()) {
             tab.classList.add("active");
           } else {
             tab.classList.remove("active");
           }
         });
+        if (sectionId === "podsSection") listPods();
       }
 
-      // Load nodes when page loads
       window.onload = function() {
         listNodes();
       };
 
+      // ---- Node functions ----
       function listNodes() {
         fetch("/nodes")
-          .then(response => response.json())
+          .then(res => res.json())
           .then(data => {
-            let output = "<h3>Nodes:</h3>";
-            if (Object.keys(data).length === 0) {
-              output += "<p>No nodes available. Add a node to get started.</p>";
+            let out = "<h3>Nodes:</h3>";
+            if (!Object.keys(data).length) {
+              out += "<p>No nodes available.</p>";
             } else {
-              for (const [id, info] of Object.entries(data)) {
-                output += `<div class="node-item">
+              for (const [nid, info] of Object.entries(data)) {
+                out += `<div class="node-item">
                   <div class="node-info">
-                    <strong>ID:</strong> ${id} | 
-                    <strong>CPU:</strong> ${info.cpu_cores} | 
+                    <strong>ID:</strong> ${nid} |
+                    <strong>CPU:</strong> ${info.cpu_cores} |
                     <strong>Status:</strong> ${info.status}
                     ${info.virtual ? '<span class="virtual-badge">Virtual</span>' : ''}
                   </div>
-                  <button onclick="removeNode('${id}')">Delete</button>
+                  <button onclick="removeNode('${nid}')">Remove</button>
                 </div>`;
               }
             }
-            document.getElementById("nodes").innerHTML = output;
+            document.getElementById("nodes").innerHTML = out;
           })
-          .catch(error => {
-            document.getElementById("nodes").innerHTML = "<p>Error loading nodes. Please ensure the server is running.</p>";
-            console.error("Error fetching nodes:", error);
+          .catch(err => {
+            document.getElementById("nodes").innerHTML = "<p>Error loading nodes.</p>";
+            console.error("Error fetching nodes:", err);
           });
       }
 
+      function removeNode(id) {
+        fetch(`/nodes/${id}/remove`, { method: 'DELETE' })
+          .then(res => res.json())
+          .then(_ => listNodes())
+          .catch(err => console.error(err));
+      }
+
       function addNode() {
-        let cpuCores = document.getElementById("cpuInput").value;
-        if (!cpuCores || cpuCores <= 0) {
-          alert("Please enter a valid number of CPU cores.");
+        const cpu = parseInt(document.getElementById("cpuInput").value);
+        if (!cpu || cpu <= 0) {
+          alert("Enter valid CPU cores for node.");
           return;
         }
         fetch("/nodes/add", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ cpu_cores: parseInt(cpuCores) })
+          body: JSON.stringify({ cpu_cores: cpu })
         })
-          .then(response => response.json())
+          .then(res => res.json())
           .then(data => {
             if (data.error) {
               alert("Error: " + data.error);
             } else {
-              alert(data.message + " (ID: " + data.node_id + ")");
+              alert(`${data.message} (Node ID: ${data.node_id})`);
               document.getElementById("cpuInput").value = "";
             }
             listNodes();
           })
-          .catch(error => {
-            alert("Error adding node. See console for details.");
-            console.error("Error:", error);
+          .catch(err => {
+            alert("Error adding node.");
+            console.error(err);
           });
       }
 
-      function removeNode(id) {
-        if (confirm("Are you sure you want to delete node " + id + "?")) {
-          fetch(`/nodes/${id}/remove`, { method: "DELETE" })
-            .then(response => response.json())
-            .then(data => {
-              if (data.error) {
-                alert("Error: " + data.error);
-              } else {
-                alert(data.message);
+      // ---- Pod functions ----
+      function listPods() {
+        fetch("/pods")
+          .then(res => res.json())
+          .then(data => {
+            let out = "<h3>Pods:</h3>";
+            if (!Object.keys(data).length) {
+              out += "<p>No pods scheduled.</p>";
+            } else {
+              for (const [pid, info] of Object.entries(data)) {
+                out += `<div class="node-item">
+                  <div class="node-info">
+                    <strong>ID:</strong> ${pid} |
+                    <strong>CPU:</strong> ${info.cpu} |
+                    <strong>Node:</strong> ${info.node_id} |
+                    <strong>Status:</strong> ${info.status}
+                  </div>
+                  <button onclick="removePod('${pid}')">Remove</button>
+                </div>`;
               }
-              listNodes();
-            })
-            .catch(error => {
-              alert("Error removing node. See console for details.");
-              console.error("Error:", error);
-            });
+            }
+            document.getElementById("pods").innerHTML = out;
+          })
+          .catch(err => {
+            document.getElementById("pods").innerHTML = "<p>Error loading pods.</p>";
+            console.error("Error fetching pods:", err);
+          });
+      }
+
+      function removePod(id) {
+        fetch(`/pods/${id}/remove`, { method: 'DELETE' })
+          .then(res => res.json())
+          .then(_ => listPods())
+          .catch(err => console.error(err));
+      }
+
+      function schedulePod() {
+        const cpu = parseInt(document.getElementById("podCpuInput").value);
+        if (!cpu || cpu <= 0) {
+          alert("Enter valid CPU for pod.");
+          return;
         }
+        fetch("/pods", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ cpu })
+        })
+          .then(res => res.json())
+          .then(data => {
+            if (data.error) {
+              alert("Error: " + data.error);
+            } else {
+              alert(`${data.message} (Pod ID: ${data.pod_id} on Node: ${data.node_id})`);
+              document.getElementById("podCpuInput").value = "";
+            }
+            listPods();
+          })
+          .catch(err => {
+            alert("Error scheduling pod.");
+            console.error(err);
+          });
       }
     </script>
   </body>
